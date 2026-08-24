@@ -7,17 +7,22 @@ import MidiUploader from '@/components/MidiUploader';
 import SongCard from '@/components/SongCard';
 import PracticeDrawer from '@/components/PracticeDrawer';
 
+// This page serves as the central catalogue dashboard for browsing, filtering,
+// and managing uploaded MIDI transcriptions within the application.
 export default function CataloguePage() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
-  // Filters
+  // These filter controls allow users to search by title, narrow the skill range,
+  // isolate favorites, and sort the collection according to distinct criteria.
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('All');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sortBy, setSortBy] = useState<'newest' | 'duration' | 'tempo'>('newest');
 
+  // Fetches the current song catalogue from Supabase and refreshes the local state
+  // whenever the page mounts or the user updates the dataset.
   const fetchSongs = async () => {
     setIsLoading(true);
     const { data, error } = await supabase
@@ -35,10 +40,13 @@ export default function CataloguePage() {
     fetchSongs();
   }, []);
 
+  // Adds a newly uploaded transcription to the front of the catalogue immediately after
+  // the server confirms it was stored successfully.
   const handleUploadSuccess = (newSong: Song) => {
     setSongs((prev) => [newSong, ...prev]);
   };
 
+  // Toggles the favorite status for a selected composition and persists the change in the database.
   const handleToggleFavorite = async (id: string, current: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = !current;
@@ -50,6 +58,25 @@ export default function CataloguePage() {
       .eq('id', id);
   };
 
+  // Keeps the collection view and the selected drawer synchronized whenever metadata is revised,
+  // including difficulty ratings, practice activity, or other user-driven updates.
+  const handleSongUpdate = (id: string, changes: Partial<Song>) => {
+    setSongs((prev) => prev.map((s) => (s.id === id ? { ...s, ...changes } : s)));
+    setSelectedSong((prev) => (prev && prev.id === id ? { ...prev, ...changes } : prev));
+  };
+
+  // Removes the backing MIDI asset from storage, deletes its database record, and clears the
+  // current selection to maintain a consistent state after deletion.
+  const handleDeleteSong = async (id: string, filePath: string) => {
+    await supabase.storage.from('midi-files').remove([filePath]);
+    await supabase.from('songs').delete().eq('id', id);
+
+    setSongs((prev) => prev.filter((s) => s.id !== id));
+    setSelectedSong(null);
+  };
+
+  // Derives the displayed dataset based on the active filters and sort directive to ensure the UI
+  // reflects the user's current browsing preferences in real time.
   const filteredSongs = useMemo(() => {
     return songs
       .filter((song) => {
@@ -67,7 +94,7 @@ export default function CataloguePage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500 selection:text-white pb-20">
-      
+
       {/* Top Navigation Bar */}
       <nav className="sticky top-0 z-40 backdrop-blur-md bg-zinc-950/80 border-b border-zinc-800/80 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -90,7 +117,7 @@ export default function CataloguePage() {
 
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-6 pt-10 space-y-10">
-        
+
         {/* Hero Section & Upload Area */}
         <section className="space-y-4">
           <div>
@@ -195,7 +222,12 @@ export default function CataloguePage() {
         </section>
 
         {/* Practice Slide-over Drawer */}
-        <PracticeDrawer song={selectedSong} onClose={() => setSelectedSong(null)} />
+        <PracticeDrawer
+          song={selectedSong}
+          onClose={() => setSelectedSong(null)}
+          onUpdate={handleSongUpdate}
+          onDelete={handleDeleteSong}
+        />
 
       </div>
     </main>

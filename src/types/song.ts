@@ -1,7 +1,9 @@
-// This domain model captures the metadata associated with each uploaded transcription and practice session.
+// This domain model defines the metadata associated with each uploaded transcription and its
+// corresponding practice history, creating a clear structure for downstream UI logic.
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
-// A song entry represents a user-transcribed MIDI file and the learner-facing data used to organize it.
+// A song record represents a user-submitted MIDI file and the learner-facing data used to organize,
+// classify, and monitor progress across the catalogue.
 export interface Song {
   id: string;
   title: string;
@@ -9,7 +11,7 @@ export interface Song {
   duration: number;
   tempo: number;
   note_count: number;
-  difficulty: Difficulty | null; // Difficulty is null will be set by the user later.
+  difficulty: Difficulty | null;
   key_signature: string;
   is_favorite: boolean;
   accuracy_rate: number;

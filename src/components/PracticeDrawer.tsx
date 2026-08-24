@@ -7,31 +7,47 @@ import { supabase } from '@/lib/supabase';
 interface PracticeDrawerProps {
   song: Song | null;
   onClose: () => void;
+  onUpdate: (id: string, changes: Partial<Song>) => void;
+  onDelete: (id: string, filePath: string) => void;
 }
 
-export default function PracticeDrawer({ song, onClose }: PracticeDrawerProps) {
+// This slide-over panel provides the detailed practice workflow for an individual transcription,
+// including difficulty benchmarking, playback controls, and session tracking.
+export default function PracticeDrawer({ song, onClose, onUpdate, onDelete }: PracticeDrawerProps) {
   const [practiceSpeed, setPracticeSpeed] = useState<number>(100);
   const [handMode, setHandMode] = useState<'both' | 'right' | 'left'>('both');
   const [sessionActive, setSessionActive] = useState(false);
 
   if (!song) return null;
 
+  // Assigns a skill level to the selected arrangement and persists it in the database as a refinement
+  // to the original automatic metadata profile.
   const handleSetDifficulty = async (level: 'Beginner' | 'Intermediate' | 'Advanced') => {
+    onUpdate(song.id, { difficulty: level });
     await supabase.from('songs').update({ difficulty: level }).eq('id', song.id);
   };
 
+  // Starts or ends a practice session and records the activity timestamp and cumulative count for later
+  // analysis of the learner's progress.
   const handleStartPractice = async () => {
     const nextState = !sessionActive;
     setSessionActive(nextState);
 
     if (nextState) {
-      await supabase
-        .from('songs')
-        .update({
-          last_practiced_at: new Date().toISOString(),
-          practice_count: (song.practice_count ?? 0) + 1,
-        })
-        .eq('id', song.id);
+      const changes = {
+        last_practiced_at: new Date().toISOString(),
+        practice_count: (song.practice_count ?? 0) + 1,
+      };
+      onUpdate(song.id, changes);
+      await supabase.from('songs').update(changes).eq('id', song.id);
+    }
+  };
+
+  // Confirms the deletion request before removing the composition from the catalogue and storage.
+  const handleDelete = () => {
+    const confirmed = window.confirm(`Delete "${song.title}"? This can't be undone.`);
+    if (confirmed) {
+      onDelete(song.id, song.file_path);
     }
   };
 
@@ -80,6 +96,23 @@ export default function PracticeDrawer({ song, onClose }: PracticeDrawerProps) {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-center">
+              <span className="text-[10px] uppercase font-semibold text-zinc-500 tracking-wider">Tempo</span>
+              <p className="text-lg font-bold text-white mt-0.5">{song.tempo} <span className="text-[10px] text-zinc-400 font-normal">BPM</span></p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-center">
+              <span className="text-[10px] uppercase font-semibold text-zinc-500 tracking-wider">Notes</span>
+              <p className="text-lg font-bold text-white mt-0.5">{song.note_count}</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-center">
+              <span className="text-[10px] uppercase font-semibold text-zinc-500 tracking-wider">Density</span>
+              <p className="text-lg font-bold text-white mt-0.5">
+                {(song.note_count / (song.duration || 1)).toFixed(1)} <span className="text-[10px] text-zinc-400 font-normal">n/s</span>
+              </p>
             </div>
           </div>
 
@@ -136,7 +169,7 @@ export default function PracticeDrawer({ song, onClose }: PracticeDrawerProps) {
           </div>
         </div>
 
-        <div className="pt-6 border-t border-zinc-800">
+        <div className="pt-6 border-t border-zinc-800 space-y-2">
           <button
             onClick={handleStartPractice}
             className={`w-full py-3.5 font-semibold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${
@@ -146,6 +179,13 @@ export default function PracticeDrawer({ song, onClose }: PracticeDrawerProps) {
             }`}
           >
             <span>{sessionActive ? '● Practice Session Active' : 'Start Interactive Practice'}</span>
+          </button>
+
+          <button
+            onClick={handleDelete}
+            className="w-full py-2.5 font-medium text-xs rounded-xl border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/5 transition-all"
+          >
+            Delete from catalogue
           </button>
         </div>
       </div>

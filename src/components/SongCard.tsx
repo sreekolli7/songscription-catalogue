@@ -16,8 +16,11 @@ const difficultyBadge = {
   Unrated: 'bg-zinc-700/10 text-zinc-400 border-zinc-700/20',
 };
 
+// Each card presents a compact summary of the transcription and invites the user to engage further
+// with the item through selection, practice configuration, and favorite tracking.
 export default function SongCard({ song, onSelect, onToggleFavorite }: SongCardProps) {
-  // A concise duration formatter preserves readability without needing a third-party time utility.
+  // This utility formats durations into a compact mm:ss representation for readability and consistency
+  // across the catalogue interface.
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;

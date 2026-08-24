@@ -7,12 +7,14 @@ interface MidiUploaderProps {
   onUploadSuccess: (newSong: Song) => void;
 }
 
+// This component provides a polished upload surface for importing MIDI files into the catalogue.
 export default function MidiUploader({ onUploadSuccess }: MidiUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Validates both the file extension and the request flow before sending the binary payload to the API.
   const handleUpload = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.mid') && !file.name.toLowerCase().endsWith('.midi')) {
       setErrorMessage('Please upload a valid .mid or .midi file.');

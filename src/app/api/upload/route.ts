@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Midi } from '@tonejs/midi';
 import { supabase } from '@/lib/supabase';
 
+// This endpoint accepts a MIDI file upload, parses the embedded musical metadata, stores the binary
+// asset in object storage, and saves the corresponding record in the relational database.
 export async function POST(req: NextRequest) {
   try {
-    // Validate the incoming multipart payload before any downstream processing begins.
+    // The multipart form payload is validated before any processing begins to ensure the request
+    // contains the expected file object and a supported file format.
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
 
@@ -45,7 +48,9 @@ export async function POST(req: NextRequest) {
     } catch (parseErr) {
       console.warn('MIDI parsing failed; using filename fallback:', parseErr);
     }
-    // Store the source MIDI in object storage so the file remains accessible while the database keeps metadata.
+
+    // The original MIDI file is stored in object storage so it remains accessible while the database
+    // retains the metadata required for search, sorting, and practice configuration.
     const timestamp = Date.now();
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `${timestamp}-${sanitizedFileName}`;
@@ -61,7 +66,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Storage upload failed: ${storageError.message}` }, { status: 500 });
     }
 
-    // Insert into DB
+    // The database record stores a user-facing summary of the MIDI file and leaves difficulty and
+    // other practice-oriented fields open for later refinement.
     const { data: newSong, error: dbError } = await supabase
       .from('songs')
       .insert([
@@ -71,10 +77,10 @@ export async function POST(req: NextRequest) {
           duration,
           tempo,
           note_count: noteCount,
-          difficulty: null, // Difficulty will be set by the user later.Defaulting to null for now
+          difficulty: null,
           key_signature: keySignature,
           is_favorite: false,
-          accuracy_rate: Math.floor(Math.random() * 40) + 60, // Mock initial score
+          accuracy_rate: Math.floor(Math.random() * 40) + 60,
           tags: [],
         },
       ])
